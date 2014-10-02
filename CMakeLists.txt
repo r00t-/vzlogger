@@ -48,6 +48,14 @@ OPTION(WITH_READER
   "compile reader to for testing your meters (def=yes)])"
   On)
 
+OPTION(ENABLE_DEBUG
+  "generate debug build with -g3 (def=no)])"
+  Off)
+
+if(ENABLE_DEBUG)
+ set(CMAKE_CXX_FLAGS "-g3")
+endif(ENABLE_DEBUG)
+
 # find dependencies
 # libsml
 if( ENABLE_SML )
@@ -113,6 +121,11 @@ message("             prefix: ${CMAKE_INSTALL_PREFIX}")
 message("             json: -L${JSON_LIBRARY} -I${JSON_INCLUDE_DIR}")
 message("             sml:  -L${SML_LIBRARY} -I${SML_INCLUDE_DIR}")
 message("             microhttpd: -L${MICROHTTPD_LIBRARY} -I${MICROHTTPD_INCLUDE_DIR}")
+if(ENABLE_DEBUG)
+  message("             debug build: yes")
+else(ENABLE_DEBUG)
+  message("             debug build: no")
+endif(ENABLE_DEBUG)
 
 if( NOT SML_FOUND)
   message(FATAL_ERROR "libsml ist required.
