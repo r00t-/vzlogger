@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
 
 	print(log_debug, "daemon=%d, local=%d", "main", options.daemon(), options.local());
 
-	if (options.daemon() || options.local()) {
+	if (0) { // if (options.daemon() || options.local()) {
 		print(log_info, "Daemonize process...", (char*)0);
 		daemonize();
 	}

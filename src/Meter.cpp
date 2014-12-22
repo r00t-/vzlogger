@@ -36,6 +36,7 @@
 #include <protocols/MeterFluksoV2.hpp>
 #include <protocols/MeterRandom.hpp>
 #include <protocols/MeterS0.hpp>
+#include <protocols/MeterRaspiS0.hpp>
 #include <protocols/MeterSML.hpp>
 //#include <protocols/.h>
 
@@ -56,6 +57,7 @@ static const meter_details_t protocols[] = {
 #ifdef SML_SUPPORT
 	METER_DETAIL(sml, Sml, "Smart Message Language as used by EDL-21, eHz and SyM²", 32,false),
 #endif /* SML_SUPPORT */
+	METER_DETAIL(raspis0, RaspiS0, "S0-meter on Raspberry PI GPIO pin",2,false),
 //{} /* stop condition for iterator */
 	METER_DETAIL(none, NULL,NULL, 0,false),
 };
@@ -145,6 +147,10 @@ Meter::Meter(std::list<Option> pOptions) :
 			break;
 		case meter_protocol_s0:
 			_protocol = vz::protocol::Protocol::Ptr(new MeterS0(pOptions));
+			_identifier = ReadingIdentifier::Ptr(new StringIdentifier());
+			break;
+		case meter_protocol_raspis0:
+			_protocol = vz::protocol::Protocol::Ptr(new MeterRaspiS0(pOptions));
 			_identifier = ReadingIdentifier::Ptr(new StringIdentifier());
 			break;
 		case meter_protocol_d0:

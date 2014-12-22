@@ -1,5 +1,5 @@
 /**
- * Meter interface
+ * S0 Hutschienenzähler directly connected to an rs232 port
  *
  * @package vzlogger
  * @copyright Copyright (c) 2011, The volkszaehler.org project
@@ -22,19 +22,28 @@
  * You should have received a copy of the GNU General Public License
  * along with volkszaehler.org. If not, see <http://www.gnu.org/licenses/>.
  */
+ 
+#ifndef _RASPIS0_H_
+#define _RASPIS0_H_
 
-#ifndef _meter_protocol_hpp_
-#define _meter_protocol_hpp_
+#include <protocols/Protocol.hpp>
 
-typedef enum meter_procotol {
-	meter_protocol_none = 0,
-	meter_protocol_file = 1,
-	meter_protocol_exec,
-	meter_protocol_random,
-	meter_protocol_s0,
-	meter_protocol_raspis0,
-	meter_protocol_d0,
-	meter_protocol_sml,
-	meter_protocol_fluksov2
-} meter_protocol_t;
-#endif /* _meter_protocol_hpp_ */
+class MeterRaspiS0 : public vz::protocol::Protocol {
+
+public:
+	MeterRaspiS0(std::list<Option> options);
+	virtual ~MeterRaspiS0();
+
+	int open();
+	int close();
+	ssize_t read(std::vector<Reading> &rds, size_t n);
+
+  protected:
+	std::string _device;
+	int _resolution;
+	int _counter;
+
+	int _fd;	/* file descriptor of port */
+};
+
+#endif /* _RASPIS0_H_ */

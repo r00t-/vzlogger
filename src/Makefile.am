@@ -16,6 +16,7 @@ vzlogger_SOURCES += exception.cpp local.cpp MeterMap.cpp
 # Protocols (add your own here)
 vzlogger_SOURCES += \
 	protocols/MeterS0.cpp \
+	protocols/MeterRaspiS0.cpp \
 	protocols/MeterD0.cpp \
 	protocols/MeterSML.cpp \
 	protocols/MeterFluksoV2.cpp \

@@ -10,6 +10,7 @@ endif( SML_SUPPORT )
 
 set(proto_srcs
   MeterS0.cpp
+  MeterRaspiS0.cpp
   MeterD0.cpp
   ${sml_srcs}
   MeterFluksoV2.cpp
