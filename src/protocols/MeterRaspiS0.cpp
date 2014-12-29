@@ -61,6 +61,9 @@ MeterRaspiS0::MeterRaspiS0(std::list<Option> options)
 		throw;
 	}
 	if (_resolution < 1) throw vz::VZException("Resolution must be greater than 0.");
+
+	_prev_pulse_time.tv_sec=0;
+	_prev_pulse_time.tv_usec=0;
 }
 
 MeterRaspiS0::~MeterRaspiS0() {
@@ -135,40 +138,45 @@ int MeterRaspiS0::close() {
 
 ssize_t MeterRaspiS0::read(std::vector<Reading> &rds, size_t n) {
 
-	struct timeval time1;
 	struct timeval time2;
-
+	int ret;
 	struct pollfd mypollfd;
 
 	mypollfd.fd=_fd;
 	mypollfd.events=POLLPRI;;
 	mypollfd.revents=0;
 
-	poll(&mypollfd,1,-1);
-	gettimeofday(&time1, NULL);
-	usleep(3000); // wait some ms for debouncing
-	::read(_fd,NULL,0); // clear edge detection event
-
-	poll(&mypollfd,1,-1);
+	poll(&mypollfd,1,-1); // poll 1 fd, wait forever
 	gettimeofday(&time2, NULL);
 	usleep(3000); // wait some ms for debouncing
 	::read(_fd,NULL,0); // clear edge detection event
 
-	double t1 = time1.tv_sec + time1.tv_usec / 1e6;
-	double t2 = time2.tv_sec + time2.tv_usec / 1e6;
-	double value = ( 3600000 ) / ( (t2-t1) * _resolution ) ;
-
-	/* store current timestamp */
-	rds[0].identifier(new StringIdentifier("Power"));
+	// we read a pulse
+	rds[0].identifier(new StringIdentifier("Impulse"));
 	rds[0].time(time2);
-	rds[0].value(value);
+	rds[0].value(1);
 
-	rds[1].identifier(new StringIdentifier("Impulse"));
-	rds[1].time(time2);
-	rds[1].value(2);
+	ret=1;
 
-	print(log_debug, "Reading S0 - n=%d power=%f", name().c_str(), n, rds[0].value());
+	// if we have a previous pulse, calculate power
+	if (_prev_pulse_time.tv_sec!=0){
+		double t1 = _prev_pulse_time.tv_sec + _prev_pulse_time.tv_usec / 1e6;
+		double t2 = time2.tv_sec + time2.tv_usec / 1e6;
+		double value = ( 3600000 ) / ( (t2-t1) * _resolution ) ;
 
-	return 2;
+		rds[1].identifier(new StringIdentifier("Power"));
+		rds[1].time(time2);
+		rds[1].value(value);
+
+		ret=2;
+		print(log_debug, "Reading S0 - n=%d power=%f", name().c_str(), n, rds[0].value());
+	} else {
+		print(log_debug, "Reading S0 - n=%d", name().c_str(), n);
+	}
+
+	_prev_pulse_time.tv_sec=time2.tv_sec;
+	_prev_pulse_time.tv_usec=time2.tv_usec;
+
+	return ret;
 }
 

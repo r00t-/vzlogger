@@ -43,6 +43,7 @@ public:
 	int _gpiopin;
 	int _resolution;
 	int _counter;
+	struct timeval _prev_pulse_time;
 
 	int _fd;	/* file descriptor of port */
 };
