@@ -40,6 +40,7 @@ public:
 
   protected:
 	std::string _device;
+	int _gpiopin;
 	int _resolution;
 	int _counter;
 
