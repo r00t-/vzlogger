@@ -30,6 +30,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <errno.h>
+#include <poll.h>
 
 #include "protocols/MeterRaspiS0.hpp"
 #include "Options.hpp"
@@ -94,8 +95,28 @@ int MeterRaspiS0::open() {
 	if (3!=res) throw vz::VZException("set direction failed");
 	if (::close(fd)<0) throw vz::VZException("set direction failed");
 
+	name.clear();
+	name.append("/sys/class/gpio/gpio");
+	name.append(std::to_string(_gpiopin));
+	name.append("/edge");
+	fd = ::open(name.c_str(), O_WRONLY);
+	if (fd<0) throw vz::VZException("open edge failed");
+	res=::write(fd,"rising\n",8);
+	if (8!=res) throw vz::VZException("set edge failed");
+	if (::close(fd)<0) throw vz::VZException("set edge failed");
+
+	name.clear();
+	name.append("/sys/class/gpio/gpio");
+	name.append(std::to_string(_gpiopin));
+	name.append("/active_low");
+	fd = ::open(name.c_str(), O_WRONLY);
+	if (fd<0) throw vz::VZException("open active_low failed");
+	res=::write(fd,"0\n",2);
+	if (2!=res) throw vz::VZException("set active_low failed");
+	if (::close(fd)<0) throw vz::VZException("set active_low failed");
+	
 	/* open port */
-	fd = ::open(_device.c_str(), O_RDONLY);
+	fd = ::open(_device.c_str(), O_RDONLY|O_EXCL);
 
 	if (fd < 0) {
 		print(log_error, "open(%s): %s", "", _device.c_str(), strerror(errno));
@@ -116,34 +137,22 @@ ssize_t MeterRaspiS0::read(std::vector<Reading> &rds, size_t n) {
 
 	struct timeval time1;
 	struct timeval time2;
-	char buf[8];
-	int res;
 
-	#error "this code is broken... it measures the time between falling edge and rising edge?"
+	struct pollfd mypollfd;
 
-	/* blocking until GPIO is high (=idle, previous pulse is over)*/
-	buf[0]='U';
-	while (1){
-		if (lseek(_fd,0,SEEK_SET)) throw vz::VZException("fseek() failed");
-		res=::read(_fd, buf, 8);
-		if (res != 2) return 0;
-		//if (res==2) print(log_error, "gpio state is: '%c'", "", buf[0]);
-		if (buf[0]=='1') break; // pin is high
-		usleep(10000);
-	}
+	mypollfd.fd=_fd;
+	mypollfd.events=POLLPRI;;
+	mypollfd.revents=0;
+
+	poll(&mypollfd,1,-1);
 	gettimeofday(&time1, NULL);
+	usleep(3000); // wait some ms for debouncing
+	::read(_fd,NULL,0); // clear edge detection event
 
-	/* blocking until GPIO is low (=start of new pulse) */
-	buf[0]='U';
-	while (buf[0]!='0'){
-		if (lseek(_fd,0,SEEK_SET)) throw vz::VZException("fseek() failed");
-		res=::read(_fd, buf, 8);
-		if (res != 2) return 0;
-		//if (res==2) print(log_error, "gpio state is: '%c'", "", buf[0]);
-		if (buf[0]=='0') break; // pin is low
-		usleep(10000);
-	}
+	poll(&mypollfd,1,-1);
 	gettimeofday(&time2, NULL);
+	usleep(3000); // wait some ms for debouncing
+	::read(_fd,NULL,0); // clear edge detection event
 
 	double t1 = time1.tv_sec + time1.tv_usec / 1e6;
 	double t2 = time2.tv_sec + time2.tv_usec / 1e6;
@@ -159,8 +168,6 @@ ssize_t MeterRaspiS0::read(std::vector<Reading> &rds, size_t n) {
 	rds[1].value(2);
 
 	print(log_debug, "Reading S0 - n=%d power=%f", name().c_str(), n, rds[0].value());
-	/* wait some ms for debouncing */
-	usleep(30000);
 
 	return 2;
 }
