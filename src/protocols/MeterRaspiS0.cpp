@@ -1,10 +1,11 @@
 /**
- * S0 Hutschienenzähler directly connected to an rs232 port
+ * S0 meter connected to raspberry pi gpio pin
  *
  * @package vzlogger
  * @copyright Copyright (c) 2011, The volkszaehler.org project
  * @license http://www.gnu.org/licenses/gpl.txt GNU Public License
  * @author Steffen Vogel <info@steffenvogel.de>
+ * @author Thorben Thuermer <r00t@constancy.org>
  */
 /*
  * This file is part of volkzaehler.org
@@ -41,11 +42,14 @@ MeterRaspiS0::MeterRaspiS0(std::list<Option> options)
 	OptionList optlist;
 
 	try {
-		_device = optlist.lookup_string(options, "gpiofile");
+		_gpiopin = optlist.lookup_int(options, "gpiopin");
 	} catch (vz::VZException &e) {
-		print(log_error, "Missing gpiofile or invalid type", "");
+		print(log_error, "Missing gpiopin or invalid gpio pin number", "");
 		throw;
 	}
+	_device.append("/sys/class/gpio/gpio");
+	_device.append(std::to_string(_gpiopin));
+	_device.append("/value");
 
 	try {
 		_resolution = optlist.lookup_int(options, "resolution");
@@ -63,9 +67,35 @@ MeterRaspiS0::~MeterRaspiS0() {
 }
 
 int MeterRaspiS0::open() {
+	std::string name;
+	int fd,res;
+
+	if (!::access(_device.c_str(),F_OK)){
+		// exists
+	} else {
+		fd=::open("/sys/class/gpio/export",O_WRONLY);
+		if (fd<0) throw vz::VZException("open export failed");
+		name.clear();
+		name.append(std::to_string(_gpiopin));
+		name.append("\n");
+		
+		res=write(fd,name.c_str(), name.length()+1);
+		if ((name.length()+1)!=res) throw vz::VZException("export failed");
+		::close(fd);
+	}
+
+	name.clear();
+	name.append("/sys/class/gpio/gpio");
+	name.append(std::to_string(_gpiopin));
+	name.append("/direction");
+	fd = ::open(name.c_str(), O_WRONLY);
+	if (fd<0) throw vz::VZException("open direction failed");
+	res=::write(fd,"in\n",3);
+	if (3!=res) throw vz::VZException("set direction failed");
+	if (::close(fd)<0) throw vz::VZException("set direction failed");
 
 	/* open port */
-	int fd = ::open(_device.c_str(), O_RDONLY);
+	fd = ::open(_device.c_str(), O_RDONLY);
 
 	if (fd < 0) {
 		print(log_error, "open(%s): %s", "", _device.c_str(), strerror(errno));
