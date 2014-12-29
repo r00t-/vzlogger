@@ -119,6 +119,8 @@ ssize_t MeterRaspiS0::read(std::vector<Reading> &rds, size_t n) {
 	char buf[8];
 	int res;
 
+	#error "this code is broken... it measures the time between falling edge and rising edge?"
+
 	/* blocking until GPIO is high (=idle, previous pulse is over)*/
 	buf[0]='U';
 	while (1){
