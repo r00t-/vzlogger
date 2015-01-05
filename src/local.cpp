@@ -62,7 +62,7 @@ json_object * api_json_tuples(Buffer::Ptr buf) {
 		it->mark_delete();
 	}
 	buf->unlock();
-	buf->clean();
+	//buf->clean();
 
 	if (_values.size() < 1 ) {
 		return NULL;
