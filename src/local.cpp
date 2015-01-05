@@ -27,15 +27,63 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <math.h>
 
 #include "vzlogger.h"
 #include "Channel.hpp"
 #include "local.h"
 #include <MeterMap.hpp>
 #include <VZException.hpp>
+#include <api/Volkszaehler.hpp> // api_json_tuples
 
 extern Config_Options options;
 
+// copied from vz::api::Volkszaehler::api_json_tuples()
+json_object * api_json_tuples(Buffer::Ptr buf) {
+	// normally private properties of vz::api::Volkszaehler
+	std::list<Reading> _values;
+	uint64_t _last_timestamp; /**< remember last timestamp */
+
+	json_object *json_tuples = json_object_new_array();
+	Buffer::iterator it;
+
+	//print(log_debug, "==> number of tuples: %d", channel()->name(), buf->size());
+	uint64_t timestamp = 1;
+
+	// copy all values to local buffer queue
+	buf->lock();
+	for (it = buf->begin(); it != buf->end(); it++) {
+		timestamp = round(it->tvtod() * 1000);
+		//print(log_debug, "compare: %llu %llu %f", channel()->name(), _last_timestamp, timestamp, it->tvtod() * 1000);
+		if (_last_timestamp < timestamp ) {
+			_values.push_back(*it);
+			_last_timestamp = timestamp;
+		}
+		it->mark_delete();
+	}
+	buf->unlock();
+	buf->clean();
+
+	if (_values.size() < 1 ) {
+		return NULL;
+	}
+
+	for (it = _values.begin(); it != _values.end(); it++) {
+		struct json_object *json_tuple = json_object_new_array();
+
+		// TODO use long int of new json-c version
+		// API requires milliseconds => * 1000
+		double timestamp = it->tvtod() * 1000;
+		double value = it->value();
+
+		json_object_array_add(json_tuple, json_object_new_double(timestamp));
+		json_object_array_add(json_tuple, json_object_new_double(value));
+
+		json_object_array_add(json_tuples, json_tuple);
+	}
+
+	return json_tuples;
+}
 int handle_request(
 	void *cls
 	, struct MHD_Connection *connection
@@ -110,8 +158,8 @@ int handle_request(
 						json_object_object_add(json_ch, "interval", json_object_new_int(mapping->meter()->interval()));
 						json_object_object_add(json_ch, "protocol", json_object_new_string(meter_get_details(mapping->meter()->protocolId())->name));
 
-//struct json_object *json_tuples = api_json_tuples(&ch->buffer, ch->buffer.head, ch->buffer.tail);
-//json_object_object_add(json_ch, "tuples", json_tuples);
+struct json_object *json_tuples = api_json_tuples((*ch)->buffer());
+json_object_object_add(json_ch, "tuples", json_tuples);
 
 						json_object_array_add(json_data, json_ch);
 					}
