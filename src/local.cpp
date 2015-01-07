@@ -34,7 +34,6 @@
 #include "local.h"
 #include <MeterMap.hpp>
 #include <VZException.hpp>
-#include <api/Volkszaehler.hpp> // api_json_tuples
 
 extern Config_Options options;
 
