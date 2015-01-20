@@ -146,8 +146,10 @@ ssize_t MeterRaspiS0::read(std::vector<Reading> &rds, size_t n) {
 	mypollfd.events=POLLPRI;;
 	mypollfd.revents=0;
 
+	print(log_debug, "waiting for an impulse", name().c_str());
 	poll(&mypollfd,1,-1); // poll 1 fd, wait forever
 	gettimeofday(&time2, NULL);
+	print(log_debug, "got an impulse", name().c_str());
 	usleep(3000); // wait some ms for debouncing
 	::read(_fd,NULL,0); // clear edge detection event
 
