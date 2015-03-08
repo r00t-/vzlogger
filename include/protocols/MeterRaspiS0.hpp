@@ -26,18 +26,17 @@
 #ifndef _RASPIS0_H_
 #define _RASPIS0_H_
 
-#include <protocols/Protocol.hpp>
+#include "protocols/BaseS0.hpp"
 
-class MeterRaspiS0 : public vz::protocol::Protocol {
-
-public:
+class MeterRaspiS0 : public vz::protocol::BaseS0 {
+  public:
 	MeterRaspiS0(std::list<Option> options);
-	virtual ~MeterRaspiS0();
-
-	int open();
-	int close();
-	ssize_t read(std::vector<Reading> &rds, size_t n);
-
+	~MeterRaspiS0();
+  protected:
+	int _wait_impulse();
+	int _open();
+	int _close();
+  private:
   protected:
 	std::string _device;
 	int _gpiopin;

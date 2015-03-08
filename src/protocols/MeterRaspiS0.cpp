@@ -37,7 +37,7 @@
 #include <VZException.hpp>
 
 MeterRaspiS0::MeterRaspiS0(std::list<Option> options)
-		: Protocol("raspis0")
+		: BaseS0(options)
 		, _counter(0)
 {
 	OptionList optlist;
@@ -70,9 +70,10 @@ MeterRaspiS0::~MeterRaspiS0() {
 	//free((void*)_device);
 }
 
-int MeterRaspiS0::open() {
+int MeterRaspiS0::_open() {
 	std::string name;
-	int fd,res;
+	int fd;
+	unsigned int res;
 
 	if (!::access(_device.c_str(),F_OK)){
 		// exists
@@ -131,15 +132,13 @@ int MeterRaspiS0::open() {
 	return SUCCESS;
 }
 
-int MeterRaspiS0::close() {
+int MeterRaspiS0::_close() {
 	::close(_fd);
 	return SUCCESS; /* close serial port */
 }
 
-ssize_t MeterRaspiS0::read(std::vector<Reading> &rds, size_t n) {
+int MeterRaspiS0::_wait_impulse(){
 
-	struct timeval time2;
-	int ret;
 	struct pollfd mypollfd;
 
 	mypollfd.fd=_fd;
@@ -148,37 +147,9 @@ ssize_t MeterRaspiS0::read(std::vector<Reading> &rds, size_t n) {
 
 	print(log_debug, "waiting for an impulse", name().c_str());
 	poll(&mypollfd,1,-1); // poll 1 fd, wait forever
-	gettimeofday(&time2, NULL);
-	print(log_debug, "got an impulse", name().c_str());
-	usleep(3000); // wait some ms for debouncing
 	::read(_fd,NULL,0); // clear edge detection event
+	print(log_debug, "got an impulse", name().c_str());
 
-	// we read a pulse
-	rds[0].identifier(new StringIdentifier("Impulse"));
-	rds[0].time(time2);
-	rds[0].value(1);
-
-	ret=1;
-
-	// if we have a previous pulse, calculate power
-	if (_prev_pulse_time.tv_sec!=0){
-		double t1 = _prev_pulse_time.tv_sec + _prev_pulse_time.tv_usec / 1e6;
-		double t2 = time2.tv_sec + time2.tv_usec / 1e6;
-		double value = ( 3600000 ) / ( (t2-t1) * _resolution ) ;
-
-		rds[1].identifier(new StringIdentifier("Power"));
-		rds[1].time(time2);
-		rds[1].value(value);
-
-		ret=2;
-		print(log_debug, "Reading S0 - n=%d power=%f", name().c_str(), n, rds[0].value());
-	} else {
-		print(log_debug, "Reading S0 - n=%d", name().c_str(), n);
-	}
-
-	_prev_pulse_time.tv_sec=time2.tv_sec;
-	_prev_pulse_time.tv_usec=time2.tv_usec;
-
-	return ret;
+	return 0;
 }
 

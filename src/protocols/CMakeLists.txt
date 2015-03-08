@@ -9,6 +9,7 @@ else( SML_SUPPORT )
 endif( SML_SUPPORT )
 
 set(proto_srcs
+  BaseS0.cpp
   MeterS0.cpp
   MeterRaspiS0.cpp
   MeterD0.cpp
